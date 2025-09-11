@@ -3,7 +3,7 @@
 [Description]
 
 ## Group Members
-- **John Doe**: jd19@fsu.edu
+- **Liam Kandel**: ltk22@fsu.edu
 - **Jane Smith**: js19@fsu.edu
 - **Alex Brown**: ab19@fsu.edu
 ## Division of Labor
@@ -87,11 +87,11 @@ This will run the program ...
 ## Development Log
 Each member records their contributions here.
 
-### [Member 1]
+### Liam Kandel
 
 | Date       | Work Completed / Notes |
 |------------|------------------------|
-| YYYY-MM-DD | [Description of task]  |
+| 2025-09-11 | Initialized git repo, began work on Part I  |
 | YYYY-MM-DD | [Description of task]  |
 | YYYY-MM-DD | [Description of task]  |
 

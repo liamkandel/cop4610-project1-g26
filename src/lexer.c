@@ -6,7 +6,7 @@
 int main()
 {
 	while (1) {
-		printf("> ");
+		show_prompt();
 
 		/* input contains the whole command
 		 * tokens contains substrings from input split by spaces
@@ -25,6 +25,15 @@ int main()
 	}
 
 	return 0;
+}
+
+void show_prompt() {
+	char *cwd = getenv("PWD");
+	char *user = getenv("USER");
+	char *machine = getenv("MACHINE");
+
+	printf("%s@%s:%s> ", user, machine, cwd);
+	fflush(stdout);
 }
 
 char *get_input(void) {

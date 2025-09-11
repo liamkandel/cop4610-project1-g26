@@ -8,6 +8,7 @@ typedef struct {
     size_t size;
 } tokenlist;
 
+void show_prompt();
 char * get_input(void);
 tokenlist * get_tokens(char *input);
 tokenlist * new_tokenlist(void);
