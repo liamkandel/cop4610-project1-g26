@@ -4,7 +4,7 @@
 
 ## Group Members
 - **Liam Kandel**: ltk22@fsu.edu
-- **Jane Smith**: js19@fsu.edu
+- **Kaitlyn Franklin**: kmf22f@fsu.edu
 - **Alex Brown**: ab19@fsu.edu
 ## Division of Labor
 
