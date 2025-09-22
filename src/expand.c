@@ -28,7 +28,7 @@ char *expand_token(char *token) {
     // Tilde expansion
     if (token[0] == '~') {
         char *home = getenv("HOME");
-        if (home) token = malloc(strlen(home) + strlen(token));
+        if (home) token = strdup(home);
     }
 
     if (oldtoken != token) free(oldtoken);
