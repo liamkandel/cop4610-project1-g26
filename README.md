@@ -104,11 +104,11 @@ Each member records their contributions here.
 | YYYY-MM-DD | [Description of task]  |
 
 
-### [Member 3]
+### Ivan Lepesii
 
 | Date       | Work Completed / Notes |
 |------------|------------------------|
-| YYYY-MM-DD | [Description of task]  |
+| 2025-09-21 | Breaks out expansions into a separate file for parts |
 | YYYY-MM-DD | [Description of task]  |
 | YYYY-MM-DD | [Description of task]  |
 

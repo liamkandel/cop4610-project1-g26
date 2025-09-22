@@ -1,4 +1,5 @@
 #include "lexer.h"
+#include "expand.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -42,6 +43,8 @@ int main()
         printf("whole input: %s\n", input);
 
         tokenlist *tokens = get_tokens(input);
+
+        tokens = expand_tokens(tokens);
 
         for (int i = 0; i < tokens->size; i++) {
 			printf("token %d: (%s)\n", i, tokens->items[i]);
