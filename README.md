@@ -108,7 +108,7 @@ Each member records their contributions here.
 
 | Date       | Work Completed / Notes |
 |------------|------------------------|
-| 2025-09-21 | Breaks out expansions into a separate file for parts |
+| 2025-09-21 | Breaks out expansions into a separate file |
 | YYYY-MM-DD | [Description of task]  |
 | YYYY-MM-DD | [Description of task]  |
 
