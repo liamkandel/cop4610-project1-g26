@@ -5,44 +5,44 @@
 ## Group Members
 - **Liam Kandel**: ltk22@fsu.edu
 - **Kaitlyn Franklin**: kmf22f@fsu.edu
-- **Alex Brown**: ab19@fsu.edu
+- **Ivan Lepesii**: il23d@fsu.edu
 ## Division of Labor
 
 ### Part 1: Prompt
 - **Responsibilities**: [Description]
-- **Assigned to**: John Doe
+- **Assigned to**: Liam, Katlyn
 
 ### Part 2: Environment Variables
 - **Responsibilities**: [Description]
-- **Assigned to**: Jane Smith
+- **Assigned to**: Liam, Kaitlyn, Ivan
 
 ### Part 3: Tilde Expansion
 - **Responsibilities**: [Description]
-- **Assigned to**: Alex Brown
+- **Assigned to**: Liam, Kaitlyn
 
 ### Part 4: $PATH Search
 - **Responsibilities**: [Description]
-- **Assigned to**: Alex Brown, Jane Smith
+- **Assigned to**: Liam, Ivan
 
 ### Part 5: External Command Execution
 - **Responsibilities**: [Description]
-- **Assigned to**: Alex Brown, Jane Smith
+- **Assigned to**: Liam, Ivan
 
 ### Part 6: I/O Redirection
 - **Responsibilities**: [Description]
-- **Assigned to**: Jane Smith
+- **Assigned to**: Liam, Kaitlyn
 
 ### Part 7: Piping
 - **Responsibilities**: [Description]
-- **Assigned to**: John Doe
+- **Assigned to**: Ivan, Liam
 
 ### Part 8: Background Processing
 - **Responsibilities**: [Description]
-- **Assigned to**: Alex Brown, John Doe
+- **Assigned to**: Kaitlyn, Ivan
 
 ### Part 9: Internal Command Execution
 - **Responsibilities**: [Description]
-- **Assigned to**: Alex Brown
+- **Assigned to**: Kaitlyn, Ivan
 
 ### Part 10: External Timeout Executable
 - **Responsibilities**: [Description]
@@ -58,10 +58,12 @@ shell/
 │
 ├── src/
 │ ├── main.c
-│ └── shell.c
+│ ├── expand.c
+│ └── lexer.c
 │
 ├── include/
-│ └── shell.h
+│ ├── expand.h
+│ └── lexer.h
 │
 ├── README.md
 └── Makefile
@@ -109,7 +111,7 @@ Each member records their contributions here.
 | Date       | Work Completed / Notes |
 |------------|------------------------|
 | 2025-09-21 | Breaks out expansions into a separate file |
-| YYYY-MM-DD | [Description of task]  |
+| 2025-09-23 | Env expansion can now expand multiple envs in one token  |
 | YYYY-MM-DD | [Description of task]  |
 
 
