@@ -47,12 +47,12 @@ int main()
         tokens = expand_tokens(tokens);
 
         for (int i = 0; i < tokens->size; i++) {
+            // char *newtok = substitute_token(tokens->items[i], i == 0);
 			printf("token %d: (%s)\n", i, tokens->items[i]);
-            char *newtok = substitute_token(tokens->items[i], i == 0);
-            if (newtok != tokens->items[i]) {
-                free(tokens->items[i]);
-                tokens->items[i] = newtok;
-            }
+            // if (newtok != tokens->items[i]) {
+            //     free(tokens->items[i]);
+            //     tokens->items[i] = newtok;
+            // }
         }
 
         // Handle built-in 'cd' command
@@ -161,41 +161,41 @@ void free_tokens(tokenlist *tokens) {
 
 char *substitute_token(char *token, int is_command) {
     // --- Environment variable expansion ($VAR) ---
-    if (token[0] == '$' && strlen(token) > 1) {
-        char *val = getenv(token + 1);
-        if (val) {
-            return strdup(val);
-        }
-        return strdup(""); // variable not found → empty string
-    }
+    // if (token[0] == '$' && strlen(token) > 1) {
+    //     char *val = getenv(token + 1);
+    //     if (val) {
+    //         return strdup(val);
+    //     }
+    //     return strdup(""); // variable not found → empty string
+    // }
 
-    if (token[0] == '~') {
-        char *home = getenv("HOME");
-        if (home) {
-            char *expanded = malloc(strlen(home) + strlen(token));
-            sprintf(expanded, "%s%s", home, token + 1);
-            return expanded;
-        }
-    }
+    // if (token[0] == '~') {
+    //     char *home = getenv("HOME");
+    //     if (home) {
+    //         char *expanded = malloc(strlen(home) + strlen(token));
+    //         sprintf(expanded, "%s%s", home, token + 1);
+    //         return expanded;
+    //     }
+    // }
 
-    if (is_command && strchr(token, '/') == NULL) {
-        char *path = getenv("PATH");
-        if (path) {
-            char *pathcopy = strdup(path);
-            char *dir = strtok(pathcopy, ":");
-            while (dir != NULL) {
-                char fullpath[1024];
-                snprintf(fullpath, sizeof(fullpath), "%s/%s", dir, token);
-                if (access(fullpath, X_OK) == 0) {
-                    free(pathcopy);
-                    return strdup(fullpath);
-                }
-                dir = strtok(NULL, ":");
-            }
-            free(pathcopy);
-        }
-    }
+    // if (is_command && strchr(token, '/') == NULL) {
+    //     char *path = getenv("PATH");
+    //     if (path) {
+    //         char *pathcopy = strdup(path);
+    //         char *dir = strtok(pathcopy, ":");
+    //         while (dir != NULL) {
+    //             char fullpath[1024];
+    //             snprintf(fullpath, sizeof(fullpath), "%s/%s", dir, token);
+    //             if (access(fullpath, X_OK) == 0) {
+    //                 free(pathcopy);
+    //                 return strdup(fullpath);
+    //             }
+    //             dir = strtok(NULL, ":");
+    //         }
+    //         free(pathcopy);
+    //     }
+    // }
 
     // No substitution performed → return original pointer
-    return token;
+    // return token;
 }
