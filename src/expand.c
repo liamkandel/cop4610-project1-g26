@@ -4,20 +4,42 @@
 #include <stdlib.h>
 #include <ctype.h>
 
+int min(int a, int b) {
+    if (a < b) return a;
+    else return b;
+}
+
+int max(int a, int b) {
+    if (a > b) return a;
+    else return b;
+}
+
 char* expand_token(char *token);
 char* expand_env(char *token);
+char* addsubstr(char *a, char *b, int end_a, int end_b);
 
-char *expand_env(char *token) {
+char* addsubstr(char *a, char *b, int end_a, int begin_b) {
+    end_a = min(end_a, strlen(a) - 1);
+    if (end_a == -1) end_a = strlen(a) - 1;
+    if (begin_b < 0) begin_b = 0;
+
+    char *res = malloc(end_a + 1 + strlen(b) - begin_b + 1);
+
+    for (int i = 0; i <= end_a; i++) res[i] = a[i];
+    for (int i = begin_b; i < strlen(b); i++) res[i + min(end_a, strlen(a)) - begin_b] = b[i];
+
+    res[end_a + strlen(b) - 1 - begin_b + 1] = '\0';
+
+    return res;
+}
+
+char* expand_env(char *token) {
     size_t tokenLen = strlen(token);
-    int expandedLength = tokenLen;
     int beginEnv = -1, endEnv = -1;
-    int added = 0, removed = 0;
-
-    char *expanded = NULL;
 
     if (tokenLen <= 1) return token;
 
-    for (int i = 0; i < tokenLen; i++) {
+    for (int i = 0; token[i] != '\0'; i++) {
         if (token[i] == '$') beginEnv = i;
         if (beginEnv != -1 && !(isalnum(token[i + 1]) || token[i + 1] == '_')) {
             endEnv = i;
@@ -29,39 +51,21 @@ char *expand_env(char *token) {
 
             char *env = getenv(tempEnv);
             if (env != NULL) {
-                int oldOffset = expandedLength - tokenLen;
-                char *oldExpanded = expanded;
-                size_t expansionLength = strlen(env);
-                expandedLength = tokenLen + added - removed + expansionLength;
-                expanded = malloc(expandedLength + 1);
+                char* expandedToken = addsubstr(token, env, beginEnv, -1);
+                i = strlen(expandedToken) - 1;
+                expandedToken = addsubstr(expandedToken, token, -1, endEnv + 1);
 
-                char *debug = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+                free(token);
+                token = expandedToken;
 
-                // Copy the part before expansion
-                if (oldExpanded == NULL) {
-                    memcpy(expanded, token, beginEnv);
-                } else {
-                    memcpy(expanded, oldExpanded, beginEnv + added - removed);
-                    expanded[beginEnv + added + 1] = '\0';
-                    printf("Prefix: %s\nBeginEnv: %d\nOffset: %d", expanded, beginEnv, added); 
-                    free(oldExpanded);
-                }
-                // Copy env expansion
-                memcpy(expanded + added - removed + beginEnv, env, expansionLength);
-                // Copy part after expansion
-                memcpy(expanded + added - removed + expansionLength, token + endEnv + 1, tokenLen - endEnv + 1);
-
-                expanded[expandedLength] = '\0';
-
-                added += expansionLength;
-                removed += envVarLength;
-                
-                printf("THE ENV EXPANDED!!: %s\n", expanded);
+                // printf("Magic: %s\n", expandedToken);
+                beginEnv = -1;
+                endEnv = -1;
             } else {
+                beginEnv = -1;
+                endEnv = -1;
                 // This should do a check for assignment of custom env vars and if it's not an assignemnt it should errork
             }
-            beginEnv = -1;
-            endEnv = -1;
         }
     }
 
@@ -76,8 +80,6 @@ char *expand_token(char *token) {
 
     // Honestly we should probably call expand_token after each expansion, to make sure the token is fully expanded..
 
-    char *oldtoken = token;
-
     // Env var expansion
     token = expand_env(token);
 
@@ -86,10 +88,9 @@ char *expand_token(char *token) {
         char *home = getenv("HOME");
         char *expanded = malloc(strlen(home) + strlen(token));
         sprintf(expanded, "%s%s", home, token + 1);
+        free(token);
         return expanded;
     }
-
-    if (oldtoken != token) free(oldtoken);
 
     return token;
 }
