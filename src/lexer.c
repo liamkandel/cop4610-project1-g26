@@ -44,39 +44,35 @@ int main()
 
         tokenlist *tokens = get_tokens(input);
 
-        tokens = expand_tokens(tokens);
 
         for (int i = 0; i < tokens->size; i++) {
-            // char *newtok = substitute_token(tokens->items[i], i == 0);
+            // Used to debug entered tokens. Delete later.
 			printf("token %d: (%s)\n", i, tokens->items[i]);
-            // if (newtok != tokens->items[i]) {
-            //     free(tokens->items[i]);
-            //     tokens->items[i] = newtok;
-            // }
         }
+
+        tokens = expand_tokens(tokens);
 
         // Handle built-in 'cd' command
         if (tokens->size > 0 && strcmp(tokens->items[0], "cd") == 0) {
-            // const char *target = tokens->size > 1 ? tokens->items[1] : getenv("HOME");
-            // if (target == NULL) target = ".";
-            // if (chdir(target) != 0) {
-            //     perror("cd");
-            // } else {
-            //     // Update PWD and CWD environment variables after successful chdir
-            //     char cwd[1024];
-            //     if (getcwd(cwd, sizeof(cwd)) != NULL) {
-            //         setenv("PWD", cwd, 1);
-            //         setenv("CWD", cwd, 1);
-            //     }
-            // }
-        } else if (tokens->size > 0 && strcmp(tokens->items[0], "echo") == 0) {
+            if (chdir(tokens->items[1]) == -1) {
+                perror("cd failed");
+            } 
+            else {
+                char cwd[1024];
+                if (getcwd(cwd, sizeof(cwd)) != NULL) {
+                    setenv("PWD", cwd, 1); // Update the PWD environment variable
+                }
+            }      
+        } 
+        else if (tokens->size > 0 && strcmp(tokens->items[0], "echo") == 0) {
             // Implement echo internally
             for (int i = 1; i < tokens->size; i++) {
                 printf("%s", tokens->items[i]);
                 if (i < tokens->size - 1) printf(" ");
             }
             printf("\n");
-        } else {
+        } 
+        else {
             execute_command(tokens);
         }
 
@@ -159,43 +155,3 @@ void free_tokens(tokenlist *tokens) {
     free(tokens);
 }
 
-char *substitute_token(char *token, int is_command) {
-    // --- Environment variable expansion ($VAR) ---
-    // if (token[0] == '$' && strlen(token) > 1) {
-    //     char *val = getenv(token + 1);
-    //     if (val) {
-    //         return strdup(val);
-    //     }
-    //     return strdup(""); // variable not found → empty string
-    // }
-
-    // if (token[0] == '~') {
-    //     char *home = getenv("HOME");
-    //     if (home) {
-    //         char *expanded = malloc(strlen(home) + strlen(token));
-    //         sprintf(expanded, "%s%s", home, token + 1);
-    //         return expanded;
-    //     }
-    // }
-
-    // if (is_command && strchr(token, '/') == NULL) {
-    //     char *path = getenv("PATH");
-    //     if (path) {
-    //         char *pathcopy = strdup(path);
-    //         char *dir = strtok(pathcopy, ":");
-    //         while (dir != NULL) {
-    //             char fullpath[1024];
-    //             snprintf(fullpath, sizeof(fullpath), "%s/%s", dir, token);
-    //             if (access(fullpath, X_OK) == 0) {
-    //                 free(pathcopy);
-    //                 return strdup(fullpath);
-    //             }
-    //             dir = strtok(NULL, ":");
-    //         }
-    //         free(pathcopy);
-    //     }
-    // }
-
-    // No substitution performed → return original pointer
-    // return token;
-}
