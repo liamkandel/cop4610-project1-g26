@@ -94,7 +94,7 @@ Each member records their contributions here.
 | Date       | Work Completed / Notes |
 |------------|------------------------|
 | 2025-09-11 | Initialized git repo, began work on Part I  |
-| YYYY-MM-DD | [Description of task]  |
+| 2025-09-24 | Refactored some parts and organized the code. Made sure it compiled on linprog.  |
 | YYYY-MM-DD | [Description of task]  |
 
 ### [Member 2]
