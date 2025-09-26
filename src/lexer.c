@@ -113,16 +113,16 @@ int main()
             }
         }
         
-        for (int i = 0; i < tokens->size; i++) {
-            printf("token %d: (%s)\n", i, tokens->items[i]);
-        }
+        // for (int i = 0; i < tokens->size; i++) {
+        //     printf("token %d: (%s)\n", i, tokens->items[i]);
+        // }
 
-        tokens->items[0] = path_search(tokens->items[0]);
-        if (tokens->items[0]) {
-            execute_external_command(tokens, &redir);
-        } else {
-            printf("Command not found\n");
-        }
+        // tokens->items[0] = path_search(tokens->items[0]);
+        // if (tokens->items[0]) {
+        //     execute_external_command(tokens, &redir);
+        // } else {
+        //     printf("Command not found\n");
+        // }
         
         
 		free(input);
