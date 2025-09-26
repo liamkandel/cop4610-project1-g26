@@ -9,23 +9,23 @@
 ## Division of Labor
 
 ### Part 1: Prompt
-- **Responsibilities**: [Description]
+- **Responsibilities**: Implement a dynamic prompt for the shell using $USER, $PWD, and $MACHINE
 - **Assigned to**: Liam, Katlyn
 
 ### Part 2: Environment Variables
-- **Responsibilities**: [Description]
+- **Responsibilities**: Expand environment variables using system calls like getenv()
 - **Assigned to**: Liam, Kaitlyn, Ivan
 
 ### Part 3: Tilde Expansion
-- **Responsibilities**: [Description]
+- **Responsibilities**: Expand out ~ and ~/ to absolute working directory
 - **Assigned to**: Liam, Kaitlyn
 
 ### Part 4: $PATH Search
-- **Responsibilities**: [Description]
+- **Responsibilities**: Search PATH directories for an executable given as the first token
 - **Assigned to**: Liam, Ivan
 
 ### Part 5: External Command Execution
-- **Responsibilities**: [Description]
+- **Responsibilities**: Execute command using fork() and execv()
 - **Assigned to**: Liam, Ivan
 
 ### Part 6: I/O Redirection
@@ -47,10 +47,6 @@
 ### Part 10: External Timeout Executable
 - **Responsibilities**: [Description]
 - **Assigned to**: Alex Brown, Jane Smith
-
-### Extra Credit
-- **Responsibilities**: [Description]
-- **Assigned to**: Alex Brown
 
 ## File Listing
 ```
@@ -95,7 +91,7 @@ Each member records their contributions here.
 |------------|------------------------|
 | 2025-09-11 | Initialized git repo, began work on Part I  |
 | 2025-09-24 | Refactored some parts and organized the code. Made sure it compiled on linprog.  |
-| YYYY-MM-DD | [Description of task]  |
+| 2025-09-26 | Completed part 5  |
 
 ### [Member 2]
 
