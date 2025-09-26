@@ -1,4 +1,5 @@
 #include "lexer.h"
+#include <sys/wait.h>
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -8,6 +9,8 @@ tokenlist* environment_variable_expansion(tokenlist*tokens); // --- PART 2: ENVI
 tokenlist* tilde_expansion(tokenlist* tokens); // --- PART 3: TILDE EXPANSION ---
 // implement path search function
 char* path_search(char* tokens); // --- PART 4: PATH SEARCH ---
+
+void execute_external_command(tokenlist* tokens); // --- PART 5: EXECUTE EXTERNAL COMMAND ---
 
 int main()
 {
@@ -36,10 +39,17 @@ int main()
         
 
         tokens->items[0] = path_search(tokens->items[0]);
+        if (tokens->items[0]) {
+            execute_external_command(tokens);
+        } else {
+            printf("Command not found\n");
+        }
+
         for (int i = 0; i < tokens->size; i++) {
 
             printf("token %d: (%s)\n", i, tokens->items[i]);
 		}
+        
 
 		free(input);
 		free_tokens(tokens);
@@ -133,6 +143,32 @@ char* path_search(char* command)
     
     free(path_copy);
     return NULL; // Command not found in any PATH directory
+}
+
+void execute_external_command(tokenlist* tokens)
+{
+    pid_t pid = fork();
+    if (pid == 0) {
+        // Child process
+        char** argv = (char**)malloc((tokens->size + 1) * sizeof(char*));
+        for (int i = 0; i < tokens->size; i++) {
+            argv[i] = tokens->items[i];
+        }
+        argv[tokens->size] = NULL; // Null-terminate the argument list
+
+        execv(tokens->items[0], argv);
+        // If execv returns, there was an error
+        perror("execv failed");
+        free(argv);
+        exit(1);
+    } else if (pid > 0) {
+        // Parent process
+        int status;
+        waitpid(pid, &status, 0);
+    } else {
+        // Fork failed
+        perror("fork failed");
+    }
 }
 
 
