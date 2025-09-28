@@ -6,17 +6,25 @@
 #include <string.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <ctype.h>
 
 int parse_redirection(tokenlist *tokens, redir_t *r); /* removes redir tokens from tokens */
 int apply_redirection(const redir_t *r, int *saved_stdin, int *saved_stdout); /* dup2s; returns 0 on success */
 void restore_stdio(int saved_stdin, int saved_stdout);
 int builtin_echo(tokenlist *tokens);
+void print_prompt(void);
+void builtin_jobs(jobs_t *jobs);
 
 tokenlist* environment_variable_expansion(tokenlist*tokens); // --- PART 2: ENVIRONMENT VARIABLE EXPANSION ---
 tokenlist* tilde_expansion(tokenlist* tokens); // --- PART 3: TILDE EXPANSION ---
 // implement path search function
 char* path_search(char* tokens); // --- PART 4: PATH SEARCH ---
-void execute_pipeline(tokenlist **commands, int num_commands); // --- PART 7: PIPING ---
+pid_t execute_pipeline(tokenlist **commands, int num_commands, int background); // --- PART 7: PIPING ---
+
+
+jobs_t* jobs_init(jobs_t *j);
+int jobs_add(jobs_t *j, pid_t pid, const char *cmdline);
+void jobs_check(jobs_t *j);
 
 
 /* helper strdup replacement to avoid implicit decl on some platforms */
@@ -27,6 +35,50 @@ static char *xstrdup(const char *s) {
     if (!p) return NULL;
     memcpy(p, s, n);
     return p;
+}
+
+jobs_t* jobs_init(jobs_t *j);
+int jobs_add(jobs_t *j, pid_t pid, const char *cmdline);
+void jobs_check(jobs_t *j);
+
+jobs_t* jobs_init(jobs_t *j) {
+    if (j) return j;
+    j = (jobs_t*)calloc(1, sizeof(jobs_t));
+    if (!j) return NULL;
+    j->next_id = 1;
+    for (int i = 0; i < 10; i++) { j->pids[i] = 0; j->cmds[i] = NULL; j->ids[i] = 0; }
+    return j;
+}
+
+int jobs_add(jobs_t *j, pid_t pid, const char *cmdline) {
+    if (!j || pid <= 0) return -1;
+    for (int i = 0; i < 10; i++) {
+        if (j->pids[i] == 0) {
+            j->pids[i] = pid;
+            j->ids[i] = j->next_id++;
+            j->cmds[i] = xstrdup(cmdline ? cmdline : "");
+            return j->ids[i];
+        }
+    }
+    return -1;
+}
+
+void jobs_check(jobs_t *j) {
+    if (!j) return;
+    for (int i = 0; i < 10; i++) {
+        if (j->pids[i] == 0) continue;
+        int status = 0;
+        pid_t r = waitpid(j->pids[i], &status, WNOHANG);
+        if (r == 0) continue;
+        if (r == j->pids[i] || (r == -1 && errno == ECHILD)) {
+            printf("[%d] + done %s\n", j->ids[i], j->cmds[i] ? j->cmds[i] : "");
+            free(j->cmds[i]);
+            j->cmds[i] = NULL;
+            j->pids[i] = 0;
+            j->ids[i] = 0;
+        }
+    }
+    while (waitpid(-1, NULL, WNOHANG) > 0) {}
 }
 
 /* Parse pipes and split tokenlist into separate commands */
@@ -63,14 +115,12 @@ int parse_pipes(tokenlist *tokens, tokenlist ***commands) {
 
 int main()
 {
+	jobs_t *jobs = NULL;
 	while (1) {
-		
-        // ---- PART 1: PROMPT -----
-        const char* user = getenv("USER");
-        const char* cwd = getenv("PWD");
-        const char* machine = getenv("MACHINE");
+		if (jobs == NULL) jobs = jobs_init(jobs);
+		jobs_check(jobs);
 
-        printf("%s@%s:%s$ ", user, machine, cwd);
+        print_prompt();
 
 
 		/* input contains the whole command
@@ -78,7 +128,6 @@ int main()
 		 */
 
 		char *input = get_input();
-		printf("whole input: %s\n", input);
 
         /* Skip empty input */
         if (!input || strlen(input) == 0) {
@@ -97,9 +146,26 @@ int main()
         tokens = tilde_expansion(tokens);
 
         
-        for (int i = 0; i < tokens->size; i++) {
-            printf("token %d: (%s)\n", i, tokens->items[i]);
-		}
+
+        int background = 0;
+        char *bg_cmdline = NULL;
+        if (tokens->size > 0 && strcmp(tokens->items[tokens->size - 1], "&") == 0) {
+            free(tokens->items[tokens->size - 1]);
+            tokens->size -= 1;
+            tokens->items[tokens->size] = NULL;
+            background = 1;
+            size_t n = strlen(input);
+            while (n > 0 && isspace((unsigned char)input[n-1])) n--;
+            if (n > 0 && input[n-1] == '&') { n--; while (n > 0 && isspace((unsigned char)input[n-1])) n--; }
+            bg_cmdline = (char*)malloc(n + 1);
+            if (bg_cmdline) { memcpy(bg_cmdline, input, n); bg_cmdline[n] = '\0'; }
+            if (tokens->size == 0) {
+                free(input);
+                free_tokens(tokens);
+                free(bg_cmdline);
+                continue;
+            }
+        }
 
         /* Check for pipes first */
         tokenlist **pipe_commands = NULL;
@@ -114,7 +180,11 @@ int main()
                     pipe_commands[i]->items[0] = cmdpath;
                 }
             }
-            execute_pipeline(pipe_commands, num_commands);
+            pid_t last = execute_pipeline(pipe_commands, num_commands, background);
+            if (background && last > 0) {
+                int jid = jobs_add(jobs, last, bg_cmdline ? bg_cmdline : input);
+                if (jid > 0) printf("[%d] %d\n", jid, (int)last);
+            }
             
             /* Cleanup */
             for (int i = 0; i < num_commands; i++) {
@@ -128,32 +198,65 @@ int main()
                 /* parse error: cleanup and continue */
                 free(input);
                 free_tokens(tokens);
+                free(bg_cmdline);
                 free(redir.in_file);
                 free(redir.out_file);
                 continue;
             }
             
             /* builtin handling */
-            if (strcmp(tokens->items[0], "echo") == 0) {
+            if (strcmp(tokens->items[0], "jobs") == 0) {
                 int saved_in = -1, saved_out = -1;
                 if (apply_redirection(&redir, &saved_in, &saved_out) != 0) {
-                    /* failed to apply redirection for builtin */
                     restore_stdio(saved_in, saved_out);
                     free(input);
                     free_tokens(tokens);
+                    free(bg_cmdline);
                     free(redir.in_file);
                     free(redir.out_file);
                     continue;
                 }
-                builtin_echo(tokens);
+                builtin_jobs(jobs);
                 restore_stdio(saved_in, saved_out);
+            } else if (strcmp(tokens->items[0], "echo") == 0) {
+                int saved_in = -1, saved_out = -1;
+                if (background) {
+                    pid_t pid = fork();
+                    if (pid == 0) {
+                        if (apply_redirection(&redir, NULL, NULL) != 0) _exit(1);
+                        builtin_echo(tokens);
+                        _exit(0);
+                    } else if (pid > 0) {
+                        int jid = jobs_add(jobs, pid, bg_cmdline ? bg_cmdline : input);
+                        if (jid > 0) printf("[%d] %d\n", jid, (int)pid);
+                    } else {
+                        perror("fork failed");
+                    }
+                } else {
+                    if (apply_redirection(&redir, &saved_in, &saved_out) != 0) {
+                        /* failed to apply redirection for builtin */
+                        restore_stdio(saved_in, saved_out);
+                        free(input);
+                        free_tokens(tokens);
+                        free(bg_cmdline);
+                        free(redir.in_file);
+                        free(redir.out_file);
+                        continue;
+                    }
+                    builtin_echo(tokens);
+                    restore_stdio(saved_in, saved_out);
+                }
             } else {
                 /* external command: find path and execute; execute_external_command will apply redir in child */
                 char *cmdpath = path_search(tokens->items[0]);
                 if (cmdpath) {
                     free(tokens->items[0]);
                     tokens->items[0] = cmdpath;
-                    execute_external_command(tokens, &redir);
+                    pid_t pid = execute_external_command(tokens, &redir, background);
+                    if (background && pid > 0) {
+                        int jid = jobs_add(jobs, pid, bg_cmdline ? bg_cmdline : input);
+                        if (jid > 0) printf("[%d] %d\n", jid, (int)pid);
+                    }
                 } else {
                     printf("Command not found\n");
                 }
@@ -172,6 +275,7 @@ int main()
         // }
         
         
+		free(bg_cmdline);
 		free(input);
 		free_tokens(tokens);
 	}
@@ -266,7 +370,7 @@ char* path_search(char* command)
     return NULL; // Command not found in any PATH directory
 }
 
-void execute_external_command(tokenlist* tokens, const redir_t *r)
+pid_t execute_external_command(tokenlist* tokens, const redir_t *r, int background)
 {
     pid_t pid = fork();
     if (pid == 0) {
@@ -290,14 +394,20 @@ void execute_external_command(tokenlist* tokens, const redir_t *r)
         free(argv);
         _exit(1);
     } else if (pid > 0) {
-        int status;
-        waitpid(pid, &status, 0);
+        if (!background) {
+            int status;
+            waitpid(pid, &status, 0);
+        } else {
+            waitpid(pid, NULL, WNOHANG);
+        }
+        return pid;
     } else {
         perror("fork failed");
+        return -1;
     }
 }
 
-void execute_pipeline(tokenlist **commands, int num_commands) {
+pid_t execute_pipeline(tokenlist **commands, int num_commands, int background) {
     int pipes[2][2];
     pid_t pids[3];
     
@@ -338,9 +448,16 @@ void execute_pipeline(tokenlist **commands, int num_commands) {
         close(pipes[i][1]);
     }
     
-    for (int i = 0; i < num_commands; i++) {
-        waitpid(pids[i], NULL, 0);
+    if (!background) {
+        for (int i = 0; i < num_commands; i++) {
+            waitpid(pids[i], NULL, 0);
+        }
+    } else {
+        for (int i = 0; i < num_commands; i++) {
+            waitpid(pids[i], NULL, WNOHANG);
+        }
     }
+    return pids[num_commands - 1];
 }
 
 char *get_input(void) {
@@ -522,5 +639,29 @@ int builtin_echo(tokenlist *tokens)
     return 0;
 }
 
+void print_prompt(void)
+{
+    const char* user = getenv("USER");
+    const char* cwd = getenv("PWD");
+    const char* machine = getenv("MACHINE");
+    printf("%s@%s:%s$ ", user ? user : "", machine ? machine : "", cwd ? cwd : "");
+    fflush(stdout);
+}
 
-
+void builtin_jobs(jobs_t *jobs)
+{
+    if (!jobs) {
+        printf("No active background processes\n");
+        return;
+    }
+    int any = 0;
+    for (int i = 0; i < 10; i++) {
+        if (jobs->pids[i] != 0) {
+            printf("[%d]+ %d %s\n", jobs->ids[i], (int)jobs->pids[i], jobs->cmds[i] ? jobs->cmds[i] : "");
+            any = 1;
+        }
+    }
+    if (!any) {
+        printf("No active background processes\n");
+    }
+}

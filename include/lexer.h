@@ -8,6 +8,13 @@ typedef struct {
     size_t size;
 } tokenlist;
 
+typedef struct {
+    pid_t pids[10];
+    char *cmds[10];
+    int ids[10];
+    int next_id;
+} jobs_t;
+
 char * get_input(void);
 tokenlist * get_tokens(char *input);
 tokenlist * new_tokenlist(void);
@@ -21,5 +28,5 @@ typedef struct {
     int append;
 } redir_t;
 
-void execute_external_command(tokenlist* tokens, const redir_t *r);
-void execute_pipeline(tokenlist **commands, int num_commands);
+pid_t execute_external_command(tokenlist* tokens, const redir_t *r, int background);
+pid_t execute_pipeline(tokenlist **commands, int num_commands, int background);
