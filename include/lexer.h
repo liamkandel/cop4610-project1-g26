@@ -2,6 +2,7 @@
 
 #include <stdlib.h>
 #include <stdbool.h>
+#include <sys/types.h>
 
 typedef struct {
     char ** items;
