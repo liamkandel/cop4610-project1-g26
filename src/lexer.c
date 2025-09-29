@@ -43,7 +43,11 @@ int main()
         }
 
 		if (history_count < 100) {
-			command_history[history_count++] = xstrdup(input);
+			char *input_copy = malloc(strlen(input) + 1);
+			if (input_copy) {
+				strcpy(input_copy, input);
+				command_history[history_count++] = input_copy;
+			}
 		}
         
         tokens = environment_variable_expansion(tokens);
@@ -152,6 +156,8 @@ int main()
                     builtin_echo(tokens);
                     restore_stdio(saved_in, saved_out);
                 }
+            } else if (strcmp(tokens->items[0], "cd") == 0) {
+                    builtin_cd(tokens);
             } else {
                 /* external command: find path and execute; execute_external_command will apply redir in child */
                 char *cmdpath = path_search(tokens->items[0]);

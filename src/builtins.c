@@ -60,3 +60,34 @@ int builtin_echo(tokenlist *tokens)
     fflush(stdout);
     return 0;
 }
+
+int builtin_cd(tokenlist *tokens)
+{
+    char *target_dir = NULL;
+    
+    /* Check number of arguments */
+    if (tokens->size > 2) {
+        fprintf(stderr, "cd: too many arguments\n");
+        return -1;
+    }
+    
+    /* If no arguments provided, change to HOME */
+    if (tokens->size == 1) {
+        target_dir = getenv("HOME");
+        if (!target_dir) {
+            fprintf(stderr, "cd: HOME environment variable not set\n");
+            return -1;
+        }
+    } else {
+        /* Use provided directory argument */
+        target_dir = tokens->items[1];
+    }
+    
+    /* Attempt to change directory */
+    if (chdir(target_dir) != 0) {
+        perror("cd");
+        return -1;
+    }
+    
+    return 0;
+}
