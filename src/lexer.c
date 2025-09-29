@@ -1,121 +1,21 @@
 #include "lexer.h"
-#include <sys/wait.h>
-#include <unistd.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <fcntl.h>
-#include <errno.h>
-#include <ctype.h>
+#include "prompt.h"
+#include "io_redir.h"
+#include "external_cmd.h"
+#include "builtins.h"
+#include "env_var_expansion.h"
+#include "tilde_expansion.h"
+#include "path_search.h"
+#include "pipeline.h"
+#include "bg_jobs.h"
 
-int parse_redirection(tokenlist *tokens, redir_t *r); /* removes redir tokens from tokens */
-int apply_redirection(const redir_t *r, int *saved_stdin, int *saved_stdout); /* dup2s; returns 0 on success */
-void restore_stdio(int saved_stdin, int saved_stdout);
-int builtin_echo(tokenlist *tokens);
-void print_prompt(void);
-void builtin_jobs(jobs_t *jobs);
-
-tokenlist* environment_variable_expansion(tokenlist*tokens); // --- PART 2: ENVIRONMENT VARIABLE EXPANSION ---
-tokenlist* tilde_expansion(tokenlist* tokens); // --- PART 3: TILDE EXPANSION ---
-// implement path search function
-char* path_search(char* tokens); // --- PART 4: PATH SEARCH ---
-pid_t execute_pipeline(tokenlist **commands, int num_commands, int background); // --- PART 7: PIPING ---
-
-
-jobs_t* jobs_init(jobs_t *j);
-int jobs_add(jobs_t *j, pid_t pid, const char *cmdline);
-void jobs_check(jobs_t *j);
-
-
-/* helper strdup replacement to avoid implicit decl on some platforms */
-static char *xstrdup(const char *s) {
-    if (!s) return NULL;
-    size_t n = strlen(s) + 1;
-    char *p = malloc(n);
-    if (!p) return NULL;
-    memcpy(p, s, n);
-    return p;
-}
-
-jobs_t* jobs_init(jobs_t *j);
-int jobs_add(jobs_t *j, pid_t pid, const char *cmdline);
-void jobs_check(jobs_t *j);
-
-jobs_t* jobs_init(jobs_t *j) {
-    if (j) return j;
-    j = (jobs_t*)calloc(1, sizeof(jobs_t));
-    if (!j) return NULL;
-    j->next_id = 1;
-    for (int i = 0; i < 10; i++) { j->pids[i] = 0; j->cmds[i] = NULL; j->ids[i] = 0; }
-    return j;
-}
-
-int jobs_add(jobs_t *j, pid_t pid, const char *cmdline) {
-    if (!j || pid <= 0) return -1;
-    for (int i = 0; i < 10; i++) {
-        if (j->pids[i] == 0) {
-            j->pids[i] = pid;
-            j->ids[i] = j->next_id++;
-            j->cmds[i] = xstrdup(cmdline ? cmdline : "");
-            return j->ids[i];
-        }
-    }
-    return -1;
-}
-
-void jobs_check(jobs_t *j) {
-    if (!j) return;
-    for (int i = 0; i < 10; i++) {
-        if (j->pids[i] == 0) continue;
-        int status = 0;
-        pid_t r = waitpid(j->pids[i], &status, WNOHANG);
-        if (r == 0) continue;
-        if (r == j->pids[i] || (r == -1 && errno == ECHILD)) {
-            printf("[%d] + done %s\n", j->ids[i], j->cmds[i] ? j->cmds[i] : "");
-            free(j->cmds[i]);
-            j->cmds[i] = NULL;
-            j->pids[i] = 0;
-            j->ids[i] = 0;
-        }
-    }
-    while (waitpid(-1, NULL, WNOHANG) > 0) {}
-}
-
-/* Parse pipes and split tokenlist into separate commands */
-int parse_pipes(tokenlist *tokens, tokenlist ***commands) {
-    int num_commands = 1;
-    
-    /* Count pipes */
-    for (int i = 0; i < tokens->size; i++) {
-        if (strcmp(tokens->items[i], "|") == 0) {
-            num_commands++;
-        }
-    }
-    
-    if (num_commands == 1) return 0; /* No pipes */
-    if (num_commands > 3) return -1; /* Too many pipes */
-    
-    /* Allocate and split commands */
-    *commands = malloc(num_commands * sizeof(tokenlist*));
-    for (int i = 0; i < num_commands; i++) {
-        (*commands)[i] = new_tokenlist();
-    }
-    
-    int current_cmd = 0;
-    for (int i = 0; i < tokens->size; i++) {
-        if (strcmp(tokens->items[i], "|") == 0) {
-            current_cmd++;
-        } else {
-            add_token((*commands)[current_cmd], tokens->items[i]);
-        }
-    }
-    
-    return num_commands;
-}
 
 int main()
 {
 	jobs_t *jobs = NULL;
+	char* command_history[100];
+	int history_count = 0;
+
 	while (1) {
 		if (jobs == NULL) jobs = jobs_init(jobs);
 		jobs_check(jobs);
@@ -141,6 +41,10 @@ int main()
             free_tokens(tokens);
             continue;
         }
+
+		if (history_count < 100) {
+			command_history[history_count++] = xstrdup(input);
+		}
         
         tokens = environment_variable_expansion(tokens);
         tokens = tilde_expansion(tokens);
@@ -218,6 +122,8 @@ int main()
                 }
                 builtin_jobs(jobs);
                 restore_stdio(saved_in, saved_out);
+            } else if (strcmp(tokens->items[0], "exit") == 0) {
+                builtin_exit(command_history, history_count, jobs->pids, 10);
             } else if (strcmp(tokens->items[0], "echo") == 0) {
                 int saved_in = -1, saved_out = -1;
                 if (background) {
@@ -262,202 +168,13 @@ int main()
                 }
             }
         }
-        
-        // for (int i = 0; i < tokens->size; i++) {
-        //     printf("token %d: (%s)\n", i, tokens->items[i]);
-        // }
-
-        // tokens->items[0] = path_search(tokens->items[0]);
-        // if (tokens->items[0]) {
-        //     execute_external_command(tokens, &redir);
-        // } else {
-        //     printf("Command not found\n");
-        // }
-        
-        
+               
 		free(bg_cmdline);
 		free(input);
 		free_tokens(tokens);
 	}
 
 	return 0;
-}
-
-tokenlist* environment_variable_expansion(tokenlist* tokens)
-{
-
-    for (int i = 0; i < tokens->size; i++) {
-            
-            if (tokens->items[i][0] == '$')
-            {
-                const char* var_name = &tokens->items[i][1]; // Skip the '$' character
-                const char* var_value = getenv(var_name);
-                if (var_value != NULL) {
-                    // Replace the token with the environment variable value
-                    free(tokens->items[i]); // Free the old token memory
-                    tokens->items[i] = (char *)malloc(strlen(var_value) + 1); 
-                    strcpy(tokens->items[i], var_value);
-                } else {
-                    // If the environment variable is not found, replace with an empty string
-                    free(tokens->items[i]); // Free the old token memory
-                    tokens->items[i] = (char *)malloc(1);
-                    tokens->items[i][0] = '\0';
-                }
-            }
-        }
-        return tokens;
-}
-
-tokenlist* tilde_expansion(tokenlist* tokens)
-{
-    for (int i = 0; i < tokens->size; i++) {
-        if (tokens->items[i][0] == '~' && (tokens->items[i][1] == '\0' || tokens->items[i][1] == '/')) {
-            const char* home = getenv("HOME");
-            if (home != NULL) {
-                // If token is "~", rest_of_path is ""
-                // If token is "~/something", rest_of_path is "/something"
-                const char* rest_of_path = &tokens->items[i][1]; // points to "" or "/something"
-                size_t new_length = strlen(home) + strlen(rest_of_path) + 1;
-                char* full_path = (char *)malloc(new_length);
-                strcpy(full_path, home);
-                strcat(full_path, rest_of_path);
-                free(tokens->items[i]);
-                tokens->items[i] = full_path;
-            } else {
-                // If HOME is not found, replace with an empty string
-                free(tokens->items[i]);
-                tokens->items[i] = (char *)malloc(1);
-                tokens->items[i][0] = '\0';
-            }
-        }
-    }
-    return tokens;
-}
-
-char* path_search(char* command)
-{    
-    if (command[0] == '/') {
-        return NULL;
-    }
-
-    const char* path_env = getenv("PATH");
-    
-    // Create a copy of PATH since strtok modifies the string
-    char* path_copy = (char*)malloc(strlen(path_env) + 1);
-
-    strcpy(path_copy, path_env);
-    
-    char* dir = strtok(path_copy, ":");
-
-    while (dir != NULL) {
-        size_t full_path_length = strlen(dir) + 1 + strlen(command) + 1;
-        char* full_path = (char*)malloc(full_path_length); 
-        
-        strcpy(full_path, dir);
-        strcat(full_path, "/");
-        strcat(full_path, command);
-
-        if (access(full_path, X_OK) == 0) {
-            free(path_copy);
-            return full_path; // Found executable - caller must free this
-        }
-        
-        free(full_path);
-        dir = strtok(NULL, ":");
-    }
-    
-    free(path_copy);
-    return NULL; // Command not found in any PATH directory
-}
-
-pid_t execute_external_command(tokenlist* tokens, const redir_t *r, int background)
-{
-    pid_t pid = fork();
-    if (pid == 0) {
-               /* Child: apply redirection here (so parent is unaffected) */
-        if (r && (r->in_file || r->out_file)) {
-            if (apply_redirection(r, NULL, NULL) != 0) {
-                _exit(1);
-            }
-        }
-
-        /* build argv */
-        char **argv = (char **)malloc((tokens->size + 1) * sizeof(char *));
-        if (!argv) { _exit(1); }
-        for (int i = 0; i < tokens->size; i++) {
-            argv[i] = tokens->items[i];
-        }
-        argv[tokens->size] = NULL;
-
-        execv(tokens->items[0], argv);
-        perror("execv failed");
-        free(argv);
-        _exit(1);
-    } else if (pid > 0) {
-        if (!background) {
-            int status;
-            waitpid(pid, &status, 0);
-        } else {
-            waitpid(pid, NULL, WNOHANG);
-        }
-        return pid;
-    } else {
-        perror("fork failed");
-        return -1;
-    }
-}
-
-pid_t execute_pipeline(tokenlist **commands, int num_commands, int background) {
-    int pipes[2][2];
-    pid_t pids[3];
-    
-    /* Create pipes */
-    for (int i = 0; i < num_commands - 1; i++) {
-        pipe(pipes[i]);
-    }
-    
-    /* Fork and execute each command */
-    for (int i = 0; i < num_commands; i++) {
-        pids[i] = fork();
-        if (pids[i] == 0) {
-            /* Child: setup pipes */
-            if (i > 0) dup2(pipes[i-1][0], STDIN_FILENO);
-            if (i < num_commands - 1) dup2(pipes[i][1], STDOUT_FILENO);
-            
-            /* Close all pipes */
-            for (int j = 0; j < num_commands - 1; j++) {
-                close(pipes[j][0]);
-                close(pipes[j][1]);
-            }
-            
-            /* Build argv and execute */
-            char **argv = malloc((commands[i]->size + 1) * sizeof(char*));
-            for (int j = 0; j < commands[i]->size; j++) {
-                argv[j] = commands[i]->items[j];
-            }
-            argv[commands[i]->size] = NULL;
-            
-            execv(commands[i]->items[0], argv);
-            _exit(1);
-        }
-    }
-    
-    /* Parent: close pipes and wait */
-    for (int i = 0; i < num_commands - 1; i++) {
-        close(pipes[i][0]);
-        close(pipes[i][1]);
-    }
-    
-    if (!background) {
-        for (int i = 0; i < num_commands; i++) {
-            waitpid(pids[i], NULL, 0);
-        }
-    } else {
-        for (int i = 0; i < num_commands; i++) {
-            waitpid(pids[i], NULL, WNOHANG);
-        }
-    }
-    return pids[num_commands - 1];
 }
 
 char *get_input(void) {
@@ -523,145 +240,3 @@ void free_tokens(tokenlist *tokens) {
 	free(tokens);
 }
 
-
-int parse_redirection(tokenlist *tokens, redir_t *r)
-{
-    r->in_file = NULL;
-    r->out_file = NULL;
-    r->append = 0;
-
-    for (int i = 0; i < tokens->size; i++) {
-        char *tok = tokens->items[i];
-        if (strcmp(tok, "<") == 0 || strcmp(tok, ">") == 0 || strcmp(tok, ">>") == 0) {
-            if (i + 1 >= tokens->size) {
-                fprintf(stderr, "syntax error: expected filename after '%s'\n", tok);
-                return -1;
-            }
-            char *fname = tokens->items[i + 1];
-
-            if (strcmp(tok, "<") == 0) {
-                /* set input file (replace previous if present) */
-                free(r->in_file);
-                r->in_file = xstrdup(fname);
-            } else {
-                free(r->out_file);
-                r->out_file = xstrdup(fname);
-                r->append = (strcmp(tok, ">>") == 0) ? 1 : 0;
-            }
-
-            /* remove the two tokens (operator and filename) from tokens list */
-            free(tokens->items[i]);   /* free operator token memory */
-            free(tokens->items[i + 1]); /* free filename token memory */
-            for (int j = i + 2; j < tokens->size; j++) {
-                tokens->items[j - 2] = tokens->items[j];
-            }
-            tokens->size -= 2;
-            tokens->items = (char **)realloc(tokens->items, (tokens->size + 1) * sizeof(char *));
-            tokens->items[tokens->size] = NULL;
-
-            i--; /* re-check current index (it now has the next token) */
-        }
-    }
-    return 0;
-}
-
-int apply_redirection(const redir_t *r, int *saved_stdin, int *saved_stdout)
-{
-    int in_fd = -1, out_fd = -1;
-
-    /* Save current stdio fds so caller can restore */
-    if (saved_stdin) {
-        *saved_stdin = dup(STDIN_FILENO);
-        if (*saved_stdin == -1) return -1;
-    }
-    if (saved_stdout) {
-        *saved_stdout = dup(STDOUT_FILENO);
-        if (*saved_stdout == -1) {
-            if (saved_stdin) { close(*saved_stdin); *saved_stdin = -1; }
-            return -1;
-        }
-    }
-
-    if (r->in_file) {
-        in_fd = open(r->in_file, O_RDONLY);
-        if (in_fd < 0) {
-            perror(r->in_file);
-            return -1;
-        }
-        if (dup2(in_fd, STDIN_FILENO) == -1) {
-            perror("dup2 stdin");
-            close(in_fd);
-            return -1;
-        }
-        close(in_fd);
-    }
-
-    if (r->out_file) {
-        int flags = O_WRONLY | O_CREAT | (r->append ? O_APPEND : O_TRUNC);
-        out_fd = open(r->out_file, flags, 0644);
-        if (out_fd < 0) {
-            perror(r->out_file);
-            return -1;
-        }
-        if (dup2(out_fd, STDOUT_FILENO) == -1) {
-            perror("dup2 stdout");
-            close(out_fd);
-            return -1;
-        }
-        close(out_fd);
-    }
-
-    return 0;
-}
-
-void restore_stdio(int saved_stdin, int saved_stdout)
-{
-    if (saved_stdin >= 0) {
-        dup2(saved_stdin, STDIN_FILENO);
-        close(saved_stdin);
-    }
-    if (saved_stdout >= 0) {
-        dup2(saved_stdout, STDOUT_FILENO);
-        close(saved_stdout);
-    }
-}
-
-/* simple builtin echo: tokens should have redirections already removed */
-int builtin_echo(tokenlist *tokens)
-{
-    /* print tokens->items[1..] separated by spaces and newline */
-    for (int i = 1; i < tokens->size; i++) {
-        if (i > 1) putchar(' ');
-        fputs(tokens->items[i], stdout);
-    }
-    putchar('\n');
-    fflush(stdout);
-    return 0;
-}
-
-void print_prompt(void)
-{
-    const char* user = getenv("USER");
-    const char* cwd = getenv("PWD");
-    const char* machine = getenv("MACHINE");
-    printf("%s@%s:%s$ ", user ? user : "", machine ? machine : "", cwd ? cwd : "");
-    fflush(stdout);
-}
-
-void builtin_jobs(jobs_t *jobs)
-{
-    if (!jobs) {
-        printf("No active background processes\n");
-        return;
-    }
-    int any = 0;
-    for (int i = 0; i < 10; i++) {
-        if (jobs->pids[i] != 0) {
-            printf("[%d]+ %d %s\n", jobs->ids[i], (int)jobs->pids[i], jobs->cmds[i] ? jobs->cmds[i] : "");
-            any = 1;
-        }
-    }
-    if (!any) {
-        printf("No active background processes\n");
-    }
-}
