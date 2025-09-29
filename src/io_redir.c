@@ -15,7 +15,7 @@ int parse_redirection(tokenlist *tokens, redir_t *r)
             char *fname = tokens->items[i + 1];
 
             if (strcmp(tok, "<") == 0) {
-                /* set input file (replace previous if present) */
+                // set input file (replace previous if present) 
                 free(r->in_file);
                 r->in_file = malloc(strlen(fname) + 1);
                 strcpy(r->in_file, fname);
@@ -26,9 +26,9 @@ int parse_redirection(tokenlist *tokens, redir_t *r)
                 r->append = (strcmp(tok, ">>") == 0) ? 1 : 0;
             }
 
-            /* remove the two tokens (operator and filename) from tokens list */
-            free(tokens->items[i]);   /* free operator token memory */
-            free(tokens->items[i + 1]); /* free filename token memory */
+            // remove the two tokens (operator and filename) from tokens list 
+            free(tokens->items[i]);   // free operator token memory 
+            free(tokens->items[i + 1]); // free filename token memory 
             for (int j = i + 2; j < tokens->size; j++) {
                 tokens->items[j - 2] = tokens->items[j];
             }
@@ -36,7 +36,7 @@ int parse_redirection(tokenlist *tokens, redir_t *r)
             tokens->items = (char **)realloc(tokens->items, (tokens->size + 1) * sizeof(char *));
             tokens->items[tokens->size] = NULL;
 
-            i--; /* re-check current index (it now has the next token) */
+            i--; // re-check current index (it now has the next token) 
         }
     }
     return 0;
@@ -46,7 +46,7 @@ int apply_redirection(const redir_t *r, int *saved_stdin, int *saved_stdout)
 {
     int in_fd = -1, out_fd = -1;
 
-    /* Save current stdio fds so caller can restore */
+    // Save current stdio fds so caller can restore 
     if (saved_stdin) {
         *saved_stdin = dup(STDIN_FILENO);
         if (*saved_stdin == -1) return -1;

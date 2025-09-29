@@ -30,7 +30,7 @@ tokenlist * new_tokenlist(void);
 void add_token(tokenlist *tokens, char *item);
 void free_tokens(tokenlist *tokens);
 
-/* Forward declaration needed for execute_external_command and execute_pipeline */
+// Forward declaration needed for execute_external_command and execute_pipeline 
 typedef struct {
     char *in_file;
     char *out_file;

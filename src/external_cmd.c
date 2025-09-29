@@ -4,14 +4,14 @@ pid_t execute_external_command(tokenlist* tokens, const redir_t *r, int backgrou
 {
     pid_t pid = fork();
     if (pid == 0) {
-               /* Child: apply redirection here (so parent is unaffected) */
+               // Child: apply redirection here (so parent is unaffected) 
         if (r && (r->in_file || r->out_file)) {
             if (apply_redirection(r, NULL, NULL) != 0) {
                 _exit(1);
             }
         }
 
-        /* build argv */
+        // build argv 
         char **argv = (char **)malloc((tokens->size + 1) * sizeof(char *));
         if (!argv) { _exit(1); }
         for (int i = 0; i < tokens->size; i++) {

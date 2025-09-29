@@ -51,7 +51,7 @@ void builtin_exit(char** history, int history_count, pid_t* bg_pids, int bg_job_
 
 int builtin_echo(tokenlist *tokens)
 {
-    /* print tokens->items[1..] separated by spaces and newline */
+    // print tokens->items[1..] separated by spaces and newline 
     for (int i = 1; i < tokens->size; i++) {
         if (i > 1) putchar(' ');
         fputs(tokens->items[i], stdout);
@@ -65,13 +65,13 @@ int builtin_cd(tokenlist *tokens)
 {
     char *target_dir = NULL;
     
-    /* Check number of arguments */
+    // Check number of arguments 
     if (tokens->size > 2) {
         fprintf(stderr, "cd: too many arguments\n");
         return -1;
     }
     
-    /* If no arguments provided, change to HOME */
+    // If no arguments provided, change to HOME 
     if (tokens->size == 1) {
         target_dir = getenv("HOME");
         if (!target_dir) {
@@ -79,11 +79,11 @@ int builtin_cd(tokenlist *tokens)
             return -1;
         }
     } else {
-        /* Use provided directory argument */
+        // Use provided directory argument 
         target_dir = tokens->items[1];
     }
     
-    /* Attempt to change directory */
+    // Attempt to change directory 
     if (chdir(target_dir) != 0) {
         perror("cd");
         return -1;

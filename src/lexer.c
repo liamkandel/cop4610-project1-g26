@@ -23,13 +23,13 @@ int main()
         print_prompt();
 
 
-		/* input contains the whole command
+		/*input contains the whole command
 		 * tokens contains substrings from input split by spaces
 		 */
 
 		char *input = get_input();
 
-        /* Skip empty input */
+        // Skip empty input 
         if (!input || strlen(input) == 0) {
             free(input);
             continue;
@@ -75,12 +75,12 @@ int main()
             }
         }
 
-        /* Check for pipes first */
-        tokenlist **pipe_commands = NULL;
-        int num_commands = parse_pipes(tokens, &pipe_commands);
+        // Check for pipes first 
+        int num_commands = 0;
+        tokenlist **pipe_commands = parse_pipes(tokens, &num_commands);
         
         if (num_commands > 1) {
-            /* Handle piped commands - find paths for all commands */
+            // Handle piped commands - find paths for all commands 
             for (int i = 0; i < num_commands; i++) {
                 char *cmdpath = path_search(pipe_commands[i]->items[0]);
                 if (cmdpath) {
@@ -94,16 +94,16 @@ int main()
                 if (jid > 0) printf("[%d] %d\n", jid, (int)last);
             }
             
-            /* Cleanup */
+            // Cleanup 
             for (int i = 0; i < num_commands; i++) {
                 free_tokens(pipe_commands[i]);
             }
             free(pipe_commands);
         } else {
-            /* Handle single command with redirection */
+            // Handle single command with redirection 
             redir_t redir;
             if (parse_redirection(tokens, &redir) != 0) {
-                /* parse error: cleanup and continue */
+                // parse error: cleanup and continue 
                 free(input);
                 free_tokens(tokens);
                 free(bg_cmdline);
@@ -112,7 +112,7 @@ int main()
                 continue;
             }
             
-            /* builtin handling */
+            // builtin handling 
             if (strcmp(tokens->items[0], "jobs") == 0) {
                 int saved_in = -1, saved_out = -1;
                 if (apply_redirection(&redir, &saved_in, &saved_out) != 0) {
@@ -144,7 +144,7 @@ int main()
                     }
                 } else {
                     if (apply_redirection(&redir, &saved_in, &saved_out) != 0) {
-                        /* failed to apply redirection for builtin */
+                        // failed to apply redirection for builtin 
                         restore_stdio(saved_in, saved_out);
                         free(input);
                         free_tokens(tokens);
@@ -159,7 +159,7 @@ int main()
             } else if (strcmp(tokens->items[0], "cd") == 0) {
                     builtin_cd(tokens);
             } else {
-                /* external command: find path and execute; execute_external_command will apply redir in child */
+                // external command: find path and execute; execute_external_command will apply redir in child 
                 char *cmdpath = path_search(tokens->items[0]);
                 if (cmdpath) {
                     free(tokens->items[0]);
@@ -210,7 +210,7 @@ tokenlist *new_tokenlist(void) {
 	tokenlist *tokens = (tokenlist *)malloc(sizeof(tokenlist));
 	tokens->size = 0;
 	tokens->items = (char **)malloc(sizeof(char *));
-	tokens->items[0] = NULL; /* make NULL terminated */
+	tokens->items[0] = NULL; // make NULL terminated 
 	return tokens;
 }
 
