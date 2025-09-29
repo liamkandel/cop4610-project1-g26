@@ -17,10 +17,12 @@ int parse_redirection(tokenlist *tokens, redir_t *r)
             if (strcmp(tok, "<") == 0) {
                 /* set input file (replace previous if present) */
                 free(r->in_file);
-                r->in_file = xstrdup(fname);
+                r->in_file = malloc(strlen(fname) + 1);
+                strcpy(r->in_file, fname);
             } else {
                 free(r->out_file);
-                r->out_file = xstrdup(fname);
+                r->out_file = malloc(strlen(fname) + 1);
+                strcpy(r->out_file, fname);
                 r->append = (strcmp(tok, ">>") == 0) ? 1 : 0;
             }
 

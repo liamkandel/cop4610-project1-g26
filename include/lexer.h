@@ -40,12 +40,3 @@ typedef struct {
 pid_t execute_external_command(tokenlist* tokens, const redir_t *r, int background);
 pid_t execute_pipeline(tokenlist **commands, int num_commands, int background);
 
-/* helper strdup replacement to avoid implicit decl on some platforms */
-static char *xstrdup(const char *s) {
-    if (!s) return NULL;
-    size_t n = strlen(s) + 1;
-    char *p = malloc(n);
-    if (!p) return NULL;
-    memcpy(p, s, n);
-    return p;
-}

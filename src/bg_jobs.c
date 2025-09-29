@@ -14,7 +14,9 @@ int jobs_add(jobs_t *j, pid_t pid, const char *cmdline) {
         if (j->pids[i] == 0) {
             j->pids[i] = pid;
             j->ids[i] = j->next_id++;
-            j->cmds[i] = xstrdup(cmdline ? cmdline : "");
+            const char *cmd = cmdline ? cmdline : "";
+            j->cmds[i] = malloc(strlen(cmd) + 1);
+            strcpy(j->cmds[i], cmd);
             return j->ids[i];
         }
     }
