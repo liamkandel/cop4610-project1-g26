@@ -1,5 +1,6 @@
 #include "lexer.h"
 #include <stdlib.h>
+#include <stdio.h>
 
 int builtin_echo(tokenlist *tokens);
 int builtin_cd(tokenlist *tokens);
