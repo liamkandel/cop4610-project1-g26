@@ -1,3 +1,3 @@
 #include "lexer.h"
 
-tokenlist* tilde_expansion(tokenlist* tokens);
+tokenlist *tilde_expansion(tokenlist *tokens);

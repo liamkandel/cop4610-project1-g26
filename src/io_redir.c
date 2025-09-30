@@ -102,3 +102,4 @@ void restore_stdio(int saved_stdin, int saved_stdout)
         close(saved_stdout);
     }
 }
+

@@ -1,1 +1,1 @@
-char* path_search(char* tokens);
+char *path_search(char *tokens);

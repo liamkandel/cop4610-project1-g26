@@ -30,3 +30,4 @@ clean:
 $(shell mkdir -p $(DIRS))
 
 .PHONY: run clean all
+

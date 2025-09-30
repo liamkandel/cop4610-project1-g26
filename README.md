@@ -139,11 +139,8 @@ Document in-person meetings, their purpose, and what was discussed.
 - **Bug 2**: This is bug 2.
 - **Bug 3**: This is bug 3.
 
-## Extra Credit
-- **Extra Credit 1**: [Extra Credit Option]
-- **Extra Credit 2**: [Extra Credit Option]
-- **Extra Credit 3**: [Extra Credit Option]
 
 ## Considerations
 [Description]
 # cop4610-project1-g26
+
